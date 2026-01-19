@@ -1,0 +1,10 @@
+{
+  "extends": "expo/tsconfig.base",
+  "compilerOptions": {
+    "strict": true,
+    "paths": {
+      "@native-springs/shaders": ["../src/index"],
+      "@native-springs/shaders/*": ["../src/*"]
+    }
+  }
+}

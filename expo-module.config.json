@@ -1,0 +1,9 @@
+{
+  "platforms": ["apple", "android"],
+  "apple": {
+    "modules": ["NativeSpringsShaderModule", "NativeSpringsShaderOverlayModule"]
+  },
+  "android": {
+    "modules": ["com.nativesprings.shaders.NativeSpringsShaderModule", "com.nativesprings.shaders.NativeSpringsShaderOverlayModule"]
+  }
+}
