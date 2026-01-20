@@ -2,6 +2,8 @@
 
 High-performance native shader effects for React Native and Expo. Transform your UI with GPU-accelerated visual effects including ripples, glitch distortions, liquid effects, aurora overlays, fireworks, and more.
 
+https://github.com/user-attachments/assets/584ff7a4-4c98-472f-9ec0-1120a8b534e6
+
 ## Features
 
 - **Native Performance**: Metal (iOS) and OpenGL (Android) implementations
