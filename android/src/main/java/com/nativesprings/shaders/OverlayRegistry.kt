@@ -15,7 +15,6 @@ object OverlayRegistry {
     private const val TAG = "OverlayRegistry"
 
     private val overlays = mutableMapOf<String, Overlay>()
-    private val programCache = mutableMapOf<String, Int>()
     private val lock = ReentrantReadWriteLock()
 
     fun register(overlay: Overlay) {
@@ -31,23 +30,29 @@ object OverlayRegistry {
         }
     }
 
-    @Throws(OverlayError::class)
-    fun compiledProgram(name: String): Int {
-        lock.read {
-            programCache[name]?.let { return it }
-        }
-
-        return lock.write {
-            programCache[name]?.let { return@write it }
-
-            val overlay = overlays[name] ?: throw OverlayError.OverlayNotFound(name)
+    /**
+     * Get or compile an overlay program using a local cache.
+     * Each GL context must provide its own cache since programs are context-specific.
+     *
+     * @param name The overlay name
+     * @param localCache The caller's local program cache (per GL context)
+     * @return The compiled program ID, or 0 if compilation failed
+     */
+    fun getOrCompile(name: String, localCache: MutableMap<String, Int>): Int {
+        return localCache.getOrPut(name) {
+            val overlay = lock.read { overlays[name] }
+            if (overlay == null) {
+                Log.e(TAG, "Overlay '$name' not found in registry")
+                return@getOrPut 0
+            }
 
             try {
                 val program = overlay.compile()
-                programCache[name] = program
-
-                DebugConfig.log(TAG, "Overlay compiled: $name")
-
+                if (program == 0) {
+                    DebugConfig.log(TAG, "Failed to compile overlay $name")
+                } else {
+                    DebugConfig.log(TAG, "Overlay compiled: $name")
+                }
                 program
             } catch (e: Exception) {
                 throw OverlayError.CompilationFailed(e.message ?: "Unknown error")
@@ -59,11 +64,4 @@ object OverlayRegistry {
         get() = lock.read {
             overlays.keys.toList()
         }
-
-    fun clearCache() {
-        lock.write {
-            programCache.clear()
-            DebugConfig.log(TAG, "Overlay program cache cleared")
-        }
-    }
 }

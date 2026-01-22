@@ -182,6 +182,7 @@ class NativeSpringsShaderOverlayView(context: Context, appContext: AppContext) :
         private var quadBuffer: FloatBuffer? = null
         private var viewWidth = 0
         private var viewHeight = 0
+        private val density: Float = context.resources.displayMetrics.density
 
         fun setOverlay(overlay: Overlay?) {
             this.overlay = overlay
@@ -192,6 +193,8 @@ class NativeSpringsShaderOverlayView(context: Context, appContext: AppContext) :
             viewHeight = height
         }
 
+        private var localProgramCache = mutableMapOf<String, Int>()
+
         override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
             GLES30.glClearColor(0f, 0f, 0f, 0f)
 
@@ -200,9 +203,9 @@ class NativeSpringsShaderOverlayView(context: Context, appContext: AppContext) :
 
             quadBuffer = com.nativesprings.shaders.GLUtils.createOverlayQuadBuffer()
 
-            OverlayRegistry.clearCache()
+            localProgramCache.clear()
 
-            DebugConfig.log(TAG, "OpenGL surface created, cache cleared")
+            DebugConfig.log(TAG, "OpenGL surface created, local cache cleared")
         }
 
         override fun onSurfaceChanged(gl: GL10?, width: Int, height: Int) {
@@ -219,14 +222,15 @@ class NativeSpringsShaderOverlayView(context: Context, appContext: AppContext) :
             val currentOverlay = overlay ?: return
 
             try {
-                val programId = OverlayRegistry.compiledProgram(currentOverlay.name)
+                val programId = OverlayRegistry.getOrCompile(currentOverlay.name, localProgramCache)
+                if (programId == 0) return
 
                 GLES30.glUseProgram(programId)
 
                 val context = OverlayContext(
                     outputTextureId = 0,
-                    viewWidth = viewWidth,
-                    viewHeight = viewHeight,
+                    viewWidth = (viewWidth / density).toInt(),
+                    viewHeight = (viewHeight / density).toInt(),
                     deltaTime = 0.0,
                     parameters = overlayParameters
                 )
