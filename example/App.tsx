@@ -10,6 +10,7 @@ import { AuroraOverlayScreen } from './src/screens/AuroraOverlayScreen';
 import { FireworksOverlayScreen } from './src/screens/FireworksOverlayScreen';
 import { LightRayOverlayScreen } from './src/screens/LightRayOverlayScreen';
 import { SparklesOverlayScreen } from './src/screens/SparklesOverlayScreen';
+import { LiquidMetalOverlayScreen } from './src/screens/LiquidMetalOverlayScreen';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 type Screen =
@@ -21,7 +22,8 @@ type Screen =
   | 'aurora'
   | 'fireworks'
   | 'lightRay'
-  | 'sparkles';
+  | 'sparkles'
+  | 'liquidMetal';
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('home');
@@ -46,6 +48,8 @@ export default function App() {
         return <LightRayOverlayScreen onBack={() => setCurrentScreen('home')} />;
       case 'sparkles':
         return <SparklesOverlayScreen onBack={() => setCurrentScreen('home')} />;
+      case 'liquidMetal':
+        return <LiquidMetalOverlayScreen onBack={() => setCurrentScreen('home')} />;
       default:
         return <HomeScreen onNavigate={setCurrentScreen} />;
     }
