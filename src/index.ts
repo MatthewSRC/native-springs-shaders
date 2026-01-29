@@ -13,6 +13,7 @@ export { FireworksOverlay } from './components/FireworksOverlay';
 export { LightRayOverlay } from './components/LightRayOverlay';
 export { SparklesOverlay } from './components/SparklesOverlay';
 export { LiquidMetalOverlay } from './components/LiquidMetalOverlay';
+export { NeonOverlay } from './components/NeonOverlay';
 
 export type { LiquidDistortionShaderProps } from './components/LiquidDistortionShader';
 export type { GlitchShaderProps } from './components/GlitchShader';
@@ -23,5 +24,6 @@ export type { FireworksOverlayProps } from './components/FireworksOverlay';
 export type { LightRayOverlayProps } from './components/LightRayOverlay';
 export type { SparklesOverlayProps } from './components/SparklesOverlay';
 export type { LiquidMetalOverlayProps } from './components/LiquidMetalOverlay';
+export type { NeonOverlayProps } from './components/NeonOverlay';
 export type { BaseShaderProps } from './components/BaseShaderView';
 export type { BaseOverlayProps } from './components/BaseOverlayView';

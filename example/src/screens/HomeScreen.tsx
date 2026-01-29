@@ -19,6 +19,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate }) => {
     { id: 'lightRay', title: 'Light Ray Overlay', description: 'Volumetric light beams' },
     { id: 'sparkles', title: 'Sparkles Overlay', description: 'Magical twinkling stars' },
     { id: 'liquidMetal', title: 'Liquid Metal Overlay', description: 'Chrome-like metallic borders' },
+    { id: 'neon', title: 'Neon Overlay', description: 'Glowing neon border effect' },
   ];
 
   return (
