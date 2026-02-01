@@ -7,7 +7,7 @@ https://github.com/user-attachments/assets/584ff7a4-4c98-472f-9ec0-1120a8b534e6
 ## Features
 
 - **Native Performance**: Metal (iOS) and OpenGL (Android) implementations
-- **8 Visual Effects**: 3 content shaders + 5 overlay effects, more to come in the near future
+- **10 Visual Effects**: 3 content shaders + 7 overlay effects, more to come in the near future
 - **TypeScript Support**: Full type definitions included
 - **Expo Compatible**: Works with managed and bare Expo projects
 
@@ -29,6 +29,8 @@ https://github.com/user-attachments/assets/584ff7a4-4c98-472f-9ec0-1120a8b534e6
 | **[FireSparksOverlay](./docs/overlays/fire-sparks.md)** | Fire particles |
 | **[FireworksOverlay](./docs/overlays/fireworks.md)** | Firework explosions |
 | **[LightRayOverlay](./docs/overlays/light-ray.md)** |  Volumetric light rays |
+| **[LiquidMetalOverlay](./docs/overlays/liquid-metal.md)** | Chrome metallic border |
+| **[NeonOverlay](./docs/overlays/neon.md)** | Glowing neon border |
 | **[SparklesOverlay](./docs/overlays/sparkles.md)** |  Twinkling particles |
 
 ## Installation
