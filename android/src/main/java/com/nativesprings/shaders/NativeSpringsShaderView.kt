@@ -42,6 +42,8 @@ class NativeSpringsShaderView(context: Context, appContext: AppContext) : ExpoVi
     private var reusableTextureWidth: Int = 0
     private var reusableTextureHeight: Int = 0
 
+    private var localProgramCache = mutableMapOf<String, Int>()
+
     private val animationHandler = Handler(Looper.getMainLooper())
     private var animationRunnable: Runnable? = null
     private var lastUpdateTime: Long = 0
@@ -438,13 +440,8 @@ class NativeSpringsShaderView(context: Context, appContext: AppContext) : ExpoVi
         try {
             context.makeCurrent()
 
-            val programId = try {
-                ShaderRegistry.compiledProgram(shader.name)
-            } catch (e: Exception) {
-                Log.e(TAG, "Failed to compile shader: ${e.message}")
-                e.printStackTrace()
-                return bitmap
-            }
+            val programId = ShaderRegistry.getOrCompile(shader.name, localProgramCache)
+            if (programId == 0) return bitmap
 
             val isAnimated = shader.needsAnimation
 
@@ -723,8 +720,7 @@ class NativeSpringsShaderView(context: Context, appContext: AppContext) : ExpoVi
         stopAnimation()
         invalidateCache()
 
-        // GL context destruction invalidates cached program IDs
-        ShaderRegistry.clearCache()
+        localProgramCache.clear()
 
         glContext?.destroy()
         glContext = null

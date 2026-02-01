@@ -113,10 +113,7 @@ class GLTextureView(context: Context) : TextureView(context), TextureView.Surfac
             inputTexture = null
         }
 
-        // GL context destruction invalidates cached program IDs
-        ShaderRegistry.clearCache()
-
-        DebugConfig.log(TAG, "GLTextureView surface destroyed, shader cache cleared")
+        DebugConfig.log(TAG, "GLTextureView surface destroyed")
 
         firstFrameRendered = false
 
@@ -145,6 +142,8 @@ class GLTextureView(context: Context) : TextureView(context), TextureView.Surfac
         private var quadBuffer: FloatBuffer? = null
         private var inputTextureId: Int? = null
         private var lastAnimationTime: Long = 0
+
+        private val localProgramCache = mutableMapOf<String, Int>()
 
         fun requestRender() {
             renderRequested = true
@@ -325,18 +324,8 @@ class GLTextureView(context: Context) : TextureView(context), TextureView.Surfac
 
                 val texId = inputTextureId ?: return
 
-                val programId = try {
-                    ShaderRegistry.compiledProgram(shader.name)
-                } catch (e: Exception) {
-                    Log.e(TAG, "Failed to compile shader ${shader.name}: ${e.message}")
-                    GLES30.glClearColor(0f, 0f, 0f, 0f)
-                    GLES30.glClear(GLES30.GL_COLOR_BUFFER_BIT)
-                    egl?.eglSwapBuffers(eglDisplay, eglSurface)
-                    return
-                }
-
+                val programId = ShaderRegistry.getOrCompile(shader.name, localProgramCache)
                 if (programId == 0) {
-                    Log.e(TAG, "Invalid shader program ID for ${shader.name}")
                     GLES30.glClearColor(0f, 0f, 0f, 0f)
                     GLES30.glClear(GLES30.GL_COLOR_BUFFER_BIT)
                     egl?.eglSwapBuffers(eglDisplay, eglSurface)
@@ -399,6 +388,7 @@ class GLTextureView(context: Context) : TextureView(context), TextureView.Surfac
         private fun cleanup() {
             inputTextureId?.let { GLUtils.deleteTexture(it) }
             inputTextureId = null
+            localProgramCache.clear()
 
             egl?.eglMakeCurrent(eglDisplay, EGL10.EGL_NO_SURFACE, EGL10.EGL_NO_SURFACE, EGL10.EGL_NO_CONTEXT)
             egl?.eglDestroySurface(eglDisplay, eglSurface)

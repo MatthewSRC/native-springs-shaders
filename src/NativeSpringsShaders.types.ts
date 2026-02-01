@@ -223,6 +223,95 @@ export interface GlitchParameters {
   chromaticSpread?: number;
 }
 
+export interface LiquidMetalSpecular {
+  /** Specular highlight intensity (0.0 - 1.0) */
+  intensity?: number;
+  /** Specular highlight position as [x, y] (-1.0 - 1.0) */
+  position?: [number, number];
+  /** Specular highlight size (0.0 - 1.0) */
+  size?: number;
+}
+
+export interface LiquidMetalParameters {
+  /** Controls the overall intensity/opacity (0.0 - 1.0+) */
+  intensity?: number;
+  /** Border width in pixels (1.0 - 20.0) */
+  borderWidth?: number;
+  /**
+   * Base metallic color - accepts multiple formats:
+   * - Normalized RGB: [0.7, 0.75, 0.8]
+   * - RGB 0-255: [179, 191, 204]
+   * - Hex string: '#B3BFCC'
+   */
+  baseColor?: ColorValue;
+  /**
+   * Highlight/reflection color - accepts multiple formats:
+   * - Normalized RGB: [1.0, 1.0, 1.0]
+   * - RGB 0-255: [255, 255, 255]
+   * - Hex string: '#FFFFFF'
+   */
+  highlightColor?: ColorValue;
+  /** Flow animation speed multiplier (0.1 - 3.0) */
+  flowSpeed?: number;
+  /** Corner radius in pixels (0.0+) */
+  cornerRadius?: number;
+  /** Number of metallic stripe bands (1.0 - 10.0) */
+  stripeCount?: number;
+  /** Distortion strength (0.0 - 1.0) */
+  distortion?: number;
+  /** Chromatic aberration intensity (0.0 - 2.0) */
+  chromaticAberration?: number;
+  /** Flow offset position as [x, y] (-1.0 - 1.0) */
+  flowOffset?: [number, number];
+  /** Flow angle in degrees (0 - 360) */
+  flowAngle?: number;
+  /** Specular highlight configuration */
+  specular?: LiquidMetalSpecular;
+  /** Surface roughness - 0.0 = polished mirror chrome, 1.0 = brushed matte (0.0 - 1.0) */
+  roughness?: number;
+}
+
+export interface NeonParameters {
+  /** Controls the overall intensity/opacity (0.0 - 1.0+) */
+  intensity?: number;
+  /** Border width in pixels (1.0 - 20.0) */
+  borderWidth?: number;
+  /** Corner radius in pixels (0.0+) */
+  cornerRadius?: number;
+  /**
+   * Primary neon color - accepts multiple formats:
+   * - Normalized RGB: [0.0, 1.0, 0.9]
+   * - RGB 0-255: [0, 255, 230]
+   * - Hex string: '#00FFE6'
+   */
+  color?: ColorValue;
+  /**
+   * Secondary neon color for gradient blending - accepts multiple formats:
+   * - Normalized RGB: [1.0, 0.0, 0.8]
+   * - RGB 0-255: [255, 0, 204]
+   * - Hex string: '#FF00CC'
+   */
+  secondaryColor?: ColorValue;
+  /** Glow size multiplier relative to border width (1.0 - 10.0) */
+  glowSize?: number;
+  /** Glow falloff exponent - higher = sharper glow (0.5 - 3.0) */
+  glowFalloff?: number;
+  /** Animated flow speed - light traveling around the border (0.0 - 3.0) */
+  flowSpeed?: number;
+  /** Flow brightness intensity (0.0 - 2.0) */
+  flowIntensity?: number;
+  /** Pulse/breathing animation speed (0.0 - 3.0) */
+  pulseSpeed?: number;
+  /** Pulse intensity - how much brightness varies (0.0 - 1.0) */
+  pulseIntensity?: number;
+  /** Flicker intensity for realistic neon effect (0.0 - 1.0) */
+  flickerIntensity?: number;
+  /** Color blend between primary and secondary colors around the border (0.0 - 1.0) */
+  colorBlend?: number;
+  /** Inset the border from view edges to give room for outer glow (0.0 - 50.0 pixels) */
+  inset?: number;
+}
+
 export type ShaderViewProps = ViewProps & {
   shaderName?: string;
   parameters?: Record<string, any>;

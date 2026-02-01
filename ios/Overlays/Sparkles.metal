@@ -1,10 +1,10 @@
 /**
  * Sparkles Overlay Shader Effect
  *
- * Inspired from shader by Nimphious: https://www.shadertoy.com/view/XcfcWj
- * Created by Matthias Brandolin - 2025
+ * Adapted from shader by int_45h: https://www.shadertoy.com/view/l3SyzG
  *
- * License: MIT
+ * License: Not specified by original author
+ * Commercial use may require permission from original author.
  */
 
 #include <metal_stdlib>

@@ -15,6 +15,8 @@ public class NativeSpringsShaderModule: Module {
       _ = FireworksOverlay()
       _ = LightRayOverlay()
       _ = SparklesOverlay()
+      _ = LiquidMetalOverlay()
+      _ = NeonOverlay()
     }
 
     View(NativeSpringsShaderView.self) {
