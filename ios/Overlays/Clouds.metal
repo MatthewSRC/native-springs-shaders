@@ -96,13 +96,13 @@ fragment float4 cloudsFragment(
         result += mixColor * b5;
     }
 
-    float alpha = saturate(length(result) * params.intensity);
+    result *= params.intensity;
+
+    float alpha = saturate(max(result.r, max(result.g, result.b)));
 
     if (alpha < 0.001) {
         return float4(0.0);
     }
 
-    result *= params.intensity;
-
-    return float4(result * alpha, alpha);
+    return float4(result, alpha);
 }

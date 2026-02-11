@@ -94,14 +94,14 @@ void main() {
         result += mixColor * b5;
     }
 
-    float alpha = clamp(length(result) * intensity, 0.0, 1.0);
+    result *= intensity;
+
+    float alpha = clamp(max(result.r, max(result.g, result.b)), 0.0, 1.0);
 
     if (alpha < 0.001) {
         fragColor = vec4(0.0);
         return;
     }
 
-    result *= intensity;
-
-    fragColor = vec4(result * alpha, alpha);
+    fragColor = vec4(result, alpha);
 }
