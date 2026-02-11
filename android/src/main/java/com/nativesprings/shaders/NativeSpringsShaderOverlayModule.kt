@@ -16,6 +16,7 @@ class NativeSpringsShaderOverlayModule : Module() {
             SparklesOverlay(appContext.reactContext!!)
             LiquidMetalOverlay(appContext.reactContext!!)
             NeonOverlay(appContext.reactContext!!)
+            CloudsOverlay(appContext.reactContext!!)
         }
 
         View(NativeSpringsShaderOverlayView::class) {

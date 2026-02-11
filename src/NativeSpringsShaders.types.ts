@@ -312,6 +312,40 @@ export interface NeonParameters {
   inset?: number;
 }
 
+export interface CloudsParameters {
+  /** Controls the overall intensity/opacity (0.0 - 1.0+) */
+  intensity?: number;
+  /**
+   * Primary blob color - accepts multiple formats:
+   * - Normalized RGB: [0.15, 0.2, 0.55]
+   * - RGB 0-255: [38, 51, 140]
+   * - Hex string: '#26338C'
+   */
+  color?: ColorValue;
+  /**
+   * Secondary blob color - accepts multiple formats:
+   * - Normalized RGB: [0.25, 0.15, 0.5]
+   * - RGB 0-255: [64, 38, 128]
+   * - Hex string: '#402680'
+   */
+  secondaryColor?: ColorValue;
+  /**
+   * Tertiary blob color - accepts multiple formats:
+   * - Normalized RGB: [0.1, 0.3, 0.5]
+   * - RGB 0-255: [26, 77, 128]
+   * - Hex string: '#1A4D80'
+   */
+  tertiaryColor?: ColorValue;
+  /** Blob size multiplier (0.5 - 3.0) */
+  scale?: number;
+  /** Drift animation speed multiplier (0.0 - 2.0) */
+  speed?: number;
+  /** Edge softness of the blobs - higher = more diffuse (0.1 - 1.0) */
+  softness?: number;
+  /** Number of color blobs (1 - 5) */
+  blobCount?: number;
+}
+
 export type ShaderViewProps = ViewProps & {
   shaderName?: string;
   parameters?: Record<string, any>;

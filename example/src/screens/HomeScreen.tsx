@@ -20,6 +20,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigate }) => {
     { id: 'sparkles', title: 'Sparkles Overlay', description: 'Magical twinkling stars' },
     { id: 'liquidMetal', title: 'Liquid Metal Overlay', description: 'Chrome-like metallic borders' },
     { id: 'neon', title: 'Neon Overlay', description: 'Glowing neon border effect' },
+    { id: 'clouds', title: 'Clouds Overlay', description: 'Soft ambient cloud backgrounds' },
   ];
 
   return (

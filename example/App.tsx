@@ -12,6 +12,7 @@ import { LightRayOverlayScreen } from './src/screens/LightRayOverlayScreen';
 import { SparklesOverlayScreen } from './src/screens/SparklesOverlayScreen';
 import { LiquidMetalOverlayScreen } from './src/screens/LiquidMetalOverlayScreen';
 import { NeonOverlayScreen } from './src/screens/NeonOverlayScreen';
+import { CloudsOverlayScreen } from './src/screens/CloudsOverlayScreen';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 type Screen =
@@ -25,7 +26,8 @@ type Screen =
   | 'lightRay'
   | 'sparkles'
   | 'liquidMetal'
-  | 'neon';
+  | 'neon'
+  | 'clouds';
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('home');
@@ -54,6 +56,8 @@ export default function App() {
         return <LiquidMetalOverlayScreen onBack={() => setCurrentScreen('home')} />;
       case 'neon':
         return <NeonOverlayScreen onBack={() => setCurrentScreen('home')} />;
+      case 'clouds':
+        return <CloudsOverlayScreen onBack={() => setCurrentScreen('home')} />;
       default:
         return <HomeScreen onNavigate={setCurrentScreen} />;
     }
