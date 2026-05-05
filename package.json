@@ -1,6 +1,6 @@
 {
   "name": "@native-springs/shaders",
-  "version": "0.2.4",
+  "version": "0.3.0",
   "description": "Native Springs Shaders",
   "main": "build/index.js",
   "types": "build/index.d.ts",
