@@ -29,9 +29,10 @@ uniform float softness;
 uniform float blobCount;
 
 float blob(vec2 uv, vec2 center, float radius, float soft) {
-    float d = length(uv - center);
+    vec2 diff = uv - center;
+    float d2 = dot(diff, diff);
     float falloff = radius * (0.3 + soft * 0.7);
-    return exp(-(d * d) / (2.0 * falloff * falloff));
+    return exp(-d2 / (2.0 * falloff * falloff));
 }
 
 void main() {
@@ -45,7 +46,8 @@ void main() {
     float soft = softness;
     int count = clamp(int(blobCount), 1, 5);
 
-    vec3 result = vec3(0.0);
+    vec3 colorSum = vec3(0.0);
+    float weightSum = 0.0;
 
     if (count >= 1) {
         vec2 c1 = vec2(
@@ -53,7 +55,8 @@ void main() {
             cos(t * 0.19 + 2.0) * 0.2 + 0.05
         );
         float b1 = blob(p, c1, baseRadius * 1.2, soft);
-        result += color * b1;
+        colorSum += color * b1;
+        weightSum += b1;
     }
 
     if (count >= 2) {
@@ -62,7 +65,8 @@ void main() {
             sin(t * 0.21 + 0.5) * 0.25 - 0.1
         );
         float b2 = blob(p, c2, baseRadius * 1.0, soft);
-        result += secondaryColor * b2;
+        colorSum += secondaryColor * b2;
+        weightSum += b2;
     }
 
     if (count >= 3) {
@@ -71,7 +75,8 @@ void main() {
             cos(t * 0.25 + 5.0) * 0.3 - 0.15
         );
         float b3 = blob(p, c3, baseRadius * 0.9, soft);
-        result += tertiaryColor * b3;
+        colorSum += tertiaryColor * b3;
+        weightSum += b3;
     }
 
     if (count >= 4) {
@@ -81,7 +86,8 @@ void main() {
         );
         float b4 = blob(p, c4, baseRadius * 0.8, soft);
         vec3 mixColor = mix(color, secondaryColor, 0.5);
-        result += mixColor * b4;
+        colorSum += mixColor * b4;
+        weightSum += b4;
     }
 
     if (count >= 5) {
@@ -91,17 +97,18 @@ void main() {
         );
         float b5 = blob(p, c5, baseRadius * 0.7, soft);
         vec3 mixColor = mix(secondaryColor, tertiaryColor, 0.5);
-        result += mixColor * b5;
+        colorSum += mixColor * b5;
+        weightSum += b5;
     }
 
-    result *= intensity;
-
-    float alpha = clamp(max(result.r, max(result.g, result.b)), 0.0, 1.0);
+    float alpha = clamp(weightSum * intensity, 0.0, 1.0);
 
     if (alpha < 0.001) {
         fragColor = vec4(0.0);
         return;
     }
 
-    fragColor = vec4(result, alpha);
+    vec3 col = colorSum / max(weightSum, 0.001);
+
+    fragColor = vec4(col, alpha);
 }

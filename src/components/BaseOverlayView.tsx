@@ -18,6 +18,15 @@ export interface BaseOverlayProps extends ViewProps {
    * @default false
    */
   disabled?: boolean;
+
+  /**
+   * When true, all instances of this overlay across the app share a single
+   * animation clock. No matter how many <CloudsOverlay unique /> components
+   * are mounted (different screens, tabs, etc.), they all show the same
+   * animation frame and time advances only once per vsync.
+   * @default false
+   */
+  unique?: boolean;
 }
 
 /**

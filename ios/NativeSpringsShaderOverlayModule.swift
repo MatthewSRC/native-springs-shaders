@@ -14,6 +14,10 @@ public class NativeSpringsShaderOverlayModule: Module {
       Prop("parameters") { (view: NativeSpringsShaderOverlayView, params: [String: Any]) in
         view.setParameters(params)
       }
+
+      Prop("unique") { (view: NativeSpringsShaderOverlayView, unique: Bool) in
+        view.isUnique = unique
+      }
     }
   }
 }

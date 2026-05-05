@@ -27,6 +27,10 @@ class NativeSpringsShaderOverlayModule : Module() {
             Prop("parameters") { view: NativeSpringsShaderOverlayView, params: Map<String, Any> ->
                 view.setParameters(params)
             }
+
+            Prop("unique") { view: NativeSpringsShaderOverlayView, unique: Boolean ->
+                view.isUnique = unique
+            }
         }
     }
 }

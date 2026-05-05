@@ -26,15 +26,31 @@ public class CloudsOverlay: Overlay {
     }
 
     public func compile(device: MTLDevice) throws -> MTLRenderPipelineState {
-        return try MetalLibraryLoader.loadAndCompilePipeline(
+        let library = try MetalLibraryLoader.loadLibrary(
             resourceName: "Clouds",
             subdirectory: "Overlays",
-            vertexFunctionName: "fullscreenVertex",
-            fragmentFunctionName: "cloudsFragment",
             bundle: Bundle(for: type(of: self)),
-            device: device,
-            enableBlending: true
+            device: device
         )
+
+        guard let vertexFunction = library.makeFunction(name: "fullscreenVertex") else {
+            throw ShaderError.compilationFailed("fullscreenVertex not found")
+        }
+        guard let fragmentFunction = library.makeFunction(name: "cloudsFragment") else {
+            throw ShaderError.compilationFailed("cloudsFragment not found")
+        }
+
+        let descriptor = MTLRenderPipelineDescriptor()
+        descriptor.vertexFunction = vertexFunction
+        descriptor.fragmentFunction = fragmentFunction
+        descriptor.colorAttachments[0].pixelFormat = .bgra8Unorm
+        descriptor.colorAttachments[0].isBlendingEnabled = true
+        descriptor.colorAttachments[0].sourceRGBBlendFactor = .one
+        descriptor.colorAttachments[0].destinationRGBBlendFactor = .oneMinusSourceAlpha
+        descriptor.colorAttachments[0].sourceAlphaBlendFactor = .one
+        descriptor.colorAttachments[0].destinationAlphaBlendFactor = .oneMinusSourceAlpha
+
+        return try device.makeRenderPipelineState(descriptor: descriptor)
     }
 
     public func update(deltaTime: TimeInterval) {

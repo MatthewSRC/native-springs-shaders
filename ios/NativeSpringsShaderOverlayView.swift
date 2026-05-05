@@ -11,6 +11,7 @@ private class DisplayLinkTarget {
     }
 
     @objc func update(_ displayLink: CADisplayLink) {
+        view?.currentFrameTimestamp = displayLink.timestamp
         view?.updateAnimation()
     }
 }
@@ -27,6 +28,19 @@ class NativeSpringsShaderOverlayView: ExpoView {
     private var displayLink: CADisplayLink?
     private var displayLinkTarget: DisplayLinkTarget?
     private var lastUpdateTime: CFTimeInterval = 0
+
+    /// Set by the `unique` prop. When true, all views sharing the same overlay
+    /// name advance the animation clock only once per vsync frame.
+    var isUnique: Bool = false
+
+    /// Populated by DisplayLinkTarget just before calling updateAnimation(),
+    /// so deduplication can compare the hardware frame timestamp.
+    fileprivate var currentFrameTimestamp: CFTimeInterval = 0
+
+    /// Per-overlay-name last-seen frame timestamp for unique-mode deduplication.
+    /// Keyed by overlay name so multiple different overlay types each get their
+    /// own dedup entry.
+    private static var lastSharedFrameTimestamps: [String: CFTimeInterval] = [:]
 
     var overlayName: String? {
         didSet {
@@ -76,7 +90,6 @@ class NativeSpringsShaderOverlayView: ExpoView {
 
     deinit {
         stopAnimation()
-        OverlayRegistry.shared.clearCache()
     }
 
 
@@ -96,7 +109,7 @@ class NativeSpringsShaderOverlayView: ExpoView {
         guard let device = metalDevice else { return }
 
         metalView.device = device
-        metalView.framebufferOnly = false
+        metalView.framebufferOnly = true
         metalView.clearColor = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 0)
         metalView.isOpaque = false
         metalView.backgroundColor = .clear
@@ -179,7 +192,20 @@ class NativeSpringsShaderOverlayView: ExpoView {
             return
         }
 
-        overlay.update(deltaTime: deltaTime)
+        if isUnique {
+            // Only advance time once per vsync frame across all unique-mode views
+            // for this overlay. CADisplayLink.timestamp is identical for every
+            // display link that fires in the same frame, so this comparison is exact.
+            let frameTime = currentFrameTimestamp
+            let overlayName = overlay.name
+            if frameTime != NativeSpringsShaderOverlayView.lastSharedFrameTimestamps[overlayName] {
+                NativeSpringsShaderOverlayView.lastSharedFrameTimestamps[overlayName] = frameTime
+                overlay.update(deltaTime: deltaTime)
+            }
+        } else {
+            overlay.update(deltaTime: deltaTime)
+        }
+
         metalView.setNeedsDisplay()
     }
 

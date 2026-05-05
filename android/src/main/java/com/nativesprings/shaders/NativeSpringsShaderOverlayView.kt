@@ -27,6 +27,13 @@ class NativeSpringsShaderOverlayView(context: Context, appContext: AppContext) :
     private var lastFrameTime: Long = 0
     private var isAnimating = false
 
+    /**
+     * When true, all views sharing the same overlay name advance the animation
+     * clock only once per vsync frame, keeping every instance in perfect sync
+     * regardless of how many screens or tabs have the overlay mounted.
+     */
+    var isUnique: Boolean = false
+
     var overlayName: String? = null
         set(value) {
             field = value
@@ -129,7 +136,22 @@ class NativeSpringsShaderOverlayView(context: Context, appContext: AppContext) :
                 val deltaTime = (frameTimeNanos - lastFrameTime) / 1_000_000_000.0
                 lastFrameTime = frameTimeNanos
 
-                currentOverlay?.update(deltaTime)
+                val overlay = currentOverlay
+                if (overlay != null) {
+                    if (isUnique) {
+                        // Only advance time once per vsync frame across all unique-mode
+                        // views for this overlay. Choreographer guarantees that
+                        // frameTimeNanos is identical for all callbacks in the same frame.
+                        val overlayName = overlay.name
+                        if (lastSharedFrameTimes[overlayName] != frameTimeNanos) {
+                            lastSharedFrameTimes[overlayName] = frameTimeNanos
+                            overlay.update(deltaTime)
+                        }
+                    } else {
+                        overlay.update(deltaTime)
+                    }
+                }
+
                 glSurfaceView.requestRender()
 
                 choreographer?.postFrameCallback(this)
@@ -175,6 +197,10 @@ class NativeSpringsShaderOverlayView(context: Context, appContext: AppContext) :
 
     companion object {
         private const val TAG = "NativeSpringsShaderOverlayView"
+
+        // Per-overlay-name last-seen frame timestamp for unique-mode deduplication.
+        // Choreographer callbacks run on the main thread so no synchronization needed.
+        private val lastSharedFrameTimes = mutableMapOf<String, Long>()
     }
 
     private inner class OverlayRenderer : GLSurfaceView.Renderer {
@@ -199,7 +225,12 @@ class NativeSpringsShaderOverlayView(context: Context, appContext: AppContext) :
             GLES30.glClearColor(0f, 0f, 0f, 0f)
 
             GLES30.glEnable(GLES30.GL_BLEND)
-            GLES30.glBlendFunc(GLES30.GL_SRC_ALPHA, GLES30.GL_ONE_MINUS_SRC_ALPHA)
+            // RGB: standard straight-alpha blend → framebuffer stores col*alpha
+            // Alpha: write srcAlpha as-is (not srcAlpha²) so SurfaceFlinger composites correctly
+            GLES30.glBlendFuncSeparate(
+                GLES30.GL_SRC_ALPHA, GLES30.GL_ONE_MINUS_SRC_ALPHA,
+                GLES30.GL_ONE,       GLES30.GL_ZERO
+            )
 
             quadBuffer = com.nativesprings.shaders.GLUtils.createOverlayQuadBuffer()
 

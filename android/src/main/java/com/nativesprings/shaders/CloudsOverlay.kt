@@ -21,6 +21,18 @@ class CloudsOverlay(private val context: Context) : Overlay {
 
     private var time: Float = 0.0f
 
+    // Cached uniform locations — populated once in compile(), reused every frame.
+    private var locTime = -1
+    private var locIntensity = -1
+    private var locViewSize = -1
+    private var locColor = -1
+    private var locSecondaryColor = -1
+    private var locTertiaryColor = -1
+    private var locScale = -1
+    private var locSpeed = -1
+    private var locSoftness = -1
+    private var locBlobCount = -1
+
     init {
         OverlayRegistry.register(this)
     }
@@ -28,7 +40,20 @@ class CloudsOverlay(private val context: Context) : Overlay {
     override fun compile(): Int {
         val vertexShader = GLUtils.loadShaderFromResource(context, R.raw.vertex)
         val fragmentShader = GLUtils.loadShaderFromResource(context, R.raw.clouds)
-        return GLUtils.createProgram(vertexShader, fragmentShader)
+        val programId = GLUtils.createProgram(vertexShader, fragmentShader)
+        if (programId != 0) {
+            locTime           = GLES30.glGetUniformLocation(programId, "time")
+            locIntensity      = GLES30.glGetUniformLocation(programId, "intensity")
+            locViewSize       = GLES30.glGetUniformLocation(programId, "viewSize")
+            locColor          = GLES30.glGetUniformLocation(programId, "color")
+            locSecondaryColor = GLES30.glGetUniformLocation(programId, "secondaryColor")
+            locTertiaryColor  = GLES30.glGetUniformLocation(programId, "tertiaryColor")
+            locScale          = GLES30.glGetUniformLocation(programId, "scale")
+            locSpeed          = GLES30.glGetUniformLocation(programId, "speed")
+            locSoftness       = GLES30.glGetUniformLocation(programId, "softness")
+            locBlobCount      = GLES30.glGetUniformLocation(programId, "blobCount")
+        }
+        return programId
     }
 
     override fun update(deltaTime: Double) {
@@ -41,52 +66,42 @@ class CloudsOverlay(private val context: Context) : Overlay {
             return
         }
 
-        val timeLoc = GLES30.glGetUniformLocation(programId, "time")
-        GLES30.glUniform1f(timeLoc, time)
+        GLES30.glUniform1f(locTime, time)
 
         val intensity = (context.parameters["intensity"] as? Number)?.toFloat() ?: 0.6f
-        val intensityLoc = GLES30.glGetUniformLocation(programId, "intensity")
-        GLES30.glUniform1f(intensityLoc, intensity)
+        GLES30.glUniform1f(locIntensity, intensity)
 
-        val viewSizeLoc = GLES30.glGetUniformLocation(programId, "viewSize")
-        GLES30.glUniform2f(viewSizeLoc, context.viewWidth.toFloat(), context.viewHeight.toFloat())
+        GLES30.glUniform2f(locViewSize, context.viewWidth.toFloat(), context.viewHeight.toFloat())
 
         val color = context.parameters.extractFloat3(
             "color", "colorR", "colorG", "colorB",
             floatArrayOf(0.15f, 0.2f, 0.55f)
         )
-        val colorLoc = GLES30.glGetUniformLocation(programId, "color")
-        GLES30.glUniform3f(colorLoc, color[0], color[1], color[2])
+        GLES30.glUniform3f(locColor, color[0], color[1], color[2])
 
         val secondaryColor = context.parameters.extractFloat3(
             "secondaryColor", "secondaryColorR", "secondaryColorG", "secondaryColorB",
             floatArrayOf(0.25f, 0.15f, 0.5f)
         )
-        val secondaryColorLoc = GLES30.glGetUniformLocation(programId, "secondaryColor")
-        GLES30.glUniform3f(secondaryColorLoc, secondaryColor[0], secondaryColor[1], secondaryColor[2])
+        GLES30.glUniform3f(locSecondaryColor, secondaryColor[0], secondaryColor[1], secondaryColor[2])
 
         val tertiaryColor = context.parameters.extractFloat3(
             "tertiaryColor", "tertiaryColorR", "tertiaryColorG", "tertiaryColorB",
             floatArrayOf(0.1f, 0.3f, 0.5f)
         )
-        val tertiaryColorLoc = GLES30.glGetUniformLocation(programId, "tertiaryColor")
-        GLES30.glUniform3f(tertiaryColorLoc, tertiaryColor[0], tertiaryColor[1], tertiaryColor[2])
+        GLES30.glUniform3f(locTertiaryColor, tertiaryColor[0], tertiaryColor[1], tertiaryColor[2])
 
         val scale = (context.parameters["scale"] as? Number)?.toFloat() ?: 1.0f
-        val scaleLoc = GLES30.glGetUniformLocation(programId, "scale")
-        GLES30.glUniform1f(scaleLoc, scale)
+        GLES30.glUniform1f(locScale, scale)
 
         val speed = (context.parameters["speed"] as? Number)?.toFloat() ?: 0.3f
-        val speedLoc = GLES30.glGetUniformLocation(programId, "speed")
-        GLES30.glUniform1f(speedLoc, speed)
+        GLES30.glUniform1f(locSpeed, speed)
 
         val softness = (context.parameters["softness"] as? Number)?.toFloat() ?: 0.6f
-        val softnessLoc = GLES30.glGetUniformLocation(programId, "softness")
-        GLES30.glUniform1f(softnessLoc, softness)
+        GLES30.glUniform1f(locSoftness, softness)
 
         val blobCount = (context.parameters["blobCount"] as? Number)?.toFloat() ?: 3.0f
-        val blobCountLoc = GLES30.glGetUniformLocation(programId, "blobCount")
-        GLES30.glUniform1f(blobCountLoc, blobCount)
+        GLES30.glUniform1f(locBlobCount, blobCount)
     }
 
     companion object {

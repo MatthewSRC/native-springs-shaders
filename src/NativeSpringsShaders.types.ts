@@ -360,4 +360,5 @@ export type ShaderViewProps = ViewProps & {
 export type OverlayViewProps = ViewProps & {
   overlayName?: string;
   parameters?: Record<string, any>;
+  unique?: boolean;
 };
