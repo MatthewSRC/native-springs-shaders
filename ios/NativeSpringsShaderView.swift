@@ -147,13 +147,7 @@ class NativeSpringsShaderView: ExpoView, MTKViewDelegate {
         super.didAddSubview(subview)
 
         if subview !== childrenContainer && subview !== outputView && subview !== metalView {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
-                guard let self = self else { return }
-                self.invalidateCache()
-                self.needsShaderUpdate = true
-                self.setNeedsLayout()
-                self.layoutIfNeeded()
-            }
+            scheduleChildrenUpdate()
         }
     }
 
@@ -172,13 +166,23 @@ class NativeSpringsShaderView: ExpoView, MTKViewDelegate {
                 subview.removeFromSuperview()
                 super.insertSubview(subview, at: reactIndex)
             }
+
+            scheduleChildrenUpdate()
         }
         super.willRemoveSubview(subview)
     }
 
-    override func didUpdateReactSubviews() {
-        super.didUpdateReactSubviews()
+    // MARK: - Children update helpers
 
+    /// Schedules a debounced cache invalidation and re-render after React children change.
+    ///
+    /// Replaces the legacy `didUpdateReactSubviews()` override which only exists on `RCTView`
+    /// (old architecture). With the new architecture (Fabric), `ExpoView` inherits from
+    /// `RCTViewComponentView` which does not declare that method, causing a Swift build error.
+    /// UIKit's `didAddSubview` and `willRemoveSubview` fire in both architectures because
+    /// Fabric's `mountChildComponentView` / `unmountChildComponentView` call the underlying
+    /// `insertSubview` / `removeFromSuperview` internally.
+    private func scheduleChildrenUpdate() {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
             guard let self = self else { return }
             self.invalidateCache()
