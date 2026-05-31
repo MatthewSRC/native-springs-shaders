@@ -1,23 +1,25 @@
 package com.nativesprings.shaders
 
 import android.content.Context
-import android.graphics.PixelFormat
-import android.opengl.GLSurfaceView
+import android.graphics.SurfaceTexture
+import android.opengl.GLES30
 import android.util.Log
 import android.view.Choreographer
+import android.view.TextureView
 import android.widget.FrameLayout
 import expo.modules.kotlin.AppContext
 import expo.modules.kotlin.views.ExpoView
 import java.nio.FloatBuffer
+import javax.microedition.khronos.egl.EGL10
 import javax.microedition.khronos.egl.EGLConfig
-import javax.microedition.khronos.opengles.GL10
-import android.opengl.GLES30
+import javax.microedition.khronos.egl.EGLContext
+import javax.microedition.khronos.egl.EGLDisplay
+import javax.microedition.khronos.egl.EGLSurface
 
 class NativeSpringsShaderOverlayView(context: Context, appContext: AppContext) :
     ExpoView(context, appContext) {
 
-    private val glSurfaceView: GLSurfaceView = GLSurfaceView(context)
-    private val renderer: OverlayRenderer = OverlayRenderer()
+    private val overlayTextureView: OverlayTextureView = OverlayTextureView(context)
 
     private var currentOverlay: Overlay? = null
     private val overlayParameters = mutableMapOf<String, Any>()
@@ -49,8 +51,7 @@ class NativeSpringsShaderOverlayView(context: Context, appContext: AppContext) :
         }
 
         overlayParameters[name] = convertedValue
-
-        glSurfaceView.requestRender()
+        overlayTextureView.requestRender()
     }
 
     fun setParameters(params: Map<String, Any>) {
@@ -60,25 +61,18 @@ class NativeSpringsShaderOverlayView(context: Context, appContext: AppContext) :
     }
 
     init {
-        setupGLSurfaceView()
+        setupOverlayTextureView()
     }
 
-    private fun setupGLSurfaceView() {
-        glSurfaceView.setEGLContextClientVersion(3)
-        glSurfaceView.setEGLConfigChooser(8, 8, 8, 8, 0, 0)
-        glSurfaceView.holder.setFormat(PixelFormat.TRANSLUCENT)
-        glSurfaceView.setZOrderOnTop(true)
-        glSurfaceView.setRenderer(renderer)
-        glSurfaceView.renderMode = GLSurfaceView.RENDERMODE_WHEN_DIRTY
-
-        glSurfaceView.isEnabled = false
-
-        addView(glSurfaceView, FrameLayout.LayoutParams(
+    private fun setupOverlayTextureView() {
+        // TextureView participates in the normal View hierarchy so z-index is respected,
+        // unlike GLSurfaceView which composites in a separate surface layer.
+        addView(overlayTextureView, FrameLayout.LayoutParams(
             FrameLayout.LayoutParams.MATCH_PARENT,
             FrameLayout.LayoutParams.MATCH_PARENT
         ))
 
-        DebugConfig.log(TAG, "GLSurfaceView initialized for overlay")
+        DebugConfig.log(TAG, "OverlayTextureView initialized")
     }
 
     private fun loadOverlay() {
@@ -107,7 +101,7 @@ class NativeSpringsShaderOverlayView(context: Context, appContext: AppContext) :
                 }
             }
 
-            renderer.setOverlay(currentOverlay)
+            overlayTextureView.setOverlay(currentOverlay)
 
             if (currentOverlay?.needsAnimation == true) {
                 startAnimation()
@@ -115,7 +109,7 @@ class NativeSpringsShaderOverlayView(context: Context, appContext: AppContext) :
                 stopAnimation()
             }
 
-            glSurfaceView.requestRender()
+            overlayTextureView.requestRender()
         } else {
             Log.w(TAG, "Overlay '$name' not found in registry")
             Log.w(TAG, "Available overlays: ${OverlayRegistry.registeredOverlays}")
@@ -152,7 +146,7 @@ class NativeSpringsShaderOverlayView(context: Context, appContext: AppContext) :
                     }
                 }
 
-                glSurfaceView.requestRender()
+                overlayTextureView.requestRender()
 
                 choreographer?.postFrameCallback(this)
             }
@@ -179,15 +173,7 @@ class NativeSpringsShaderOverlayView(context: Context, appContext: AppContext) :
         val width = right - left
         val height = bottom - top
 
-        glSurfaceView.layout(0, 0, width, height)
-        renderer.updateViewSize(width, height)
-    }
-
-    override fun addView(child: android.view.View?, index: Int, params: android.view.ViewGroup.LayoutParams?) {
-        super.addView(child, index, params)
-        if (child != glSurfaceView) {
-            glSurfaceView.bringToFront()
-        }
+        overlayTextureView.layout(0, 0, width, height)
     }
 
     override fun onDetachedFromWindow() {
@@ -203,93 +189,233 @@ class NativeSpringsShaderOverlayView(context: Context, appContext: AppContext) :
         private val lastSharedFrameTimes = mutableMapOf<String, Long>()
     }
 
-    private inner class OverlayRenderer : GLSurfaceView.Renderer {
-        private var overlay: Overlay? = null
-        private var quadBuffer: FloatBuffer? = null
-        private var viewWidth = 0
-        private var viewHeight = 0
-        private val density: Float = context.resources.displayMetrics.density
+    private inner class OverlayTextureView(context: Context) :
+        TextureView(context), TextureView.SurfaceTextureListener {
+
+        private var renderThread: RenderThread? = null
+
+        @Volatile
+        private var pendingRender = false
+
+        init {
+            isOpaque = false
+            isClickable = false
+            isFocusable = false
+            surfaceTextureListener = this
+        }
 
         fun setOverlay(overlay: Overlay?) {
-            this.overlay = overlay
+            renderThread?.setOverlay(overlay)
         }
 
-        fun updateViewSize(width: Int, height: Int) {
-            viewWidth = width
-            viewHeight = height
+        fun requestRender() {
+            val thread = renderThread
+            if (thread != null) {
+                thread.requestRender()
+            } else {
+                pendingRender = true
+            }
         }
 
-        private var localProgramCache = mutableMapOf<String, Int>()
-
-        override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
-            GLES30.glClearColor(0f, 0f, 0f, 0f)
-
-            GLES30.glEnable(GLES30.GL_BLEND)
-            // RGB: standard straight-alpha blend → framebuffer stores col*alpha
-            // Alpha: write srcAlpha as-is (not srcAlpha²) so SurfaceFlinger composites correctly
-            GLES30.glBlendFuncSeparate(
-                GLES30.GL_SRC_ALPHA, GLES30.GL_ONE_MINUS_SRC_ALPHA,
-                GLES30.GL_ONE,       GLES30.GL_ZERO
-            )
-
-            quadBuffer = com.nativesprings.shaders.GLUtils.createOverlayQuadBuffer()
-
-            localProgramCache.clear()
-
-            DebugConfig.log(TAG, "OpenGL surface created, local cache cleared")
+        override fun onSurfaceTextureAvailable(surface: SurfaceTexture, width: Int, height: Int) {
+            val thread = RenderThread(surface, width, height)
+            renderThread = thread
+            currentOverlay?.let { thread.setOverlay(it) }
+            thread.start()
+            if (pendingRender) {
+                pendingRender = false
+                thread.requestRender()
+            }
+            DebugConfig.log(TAG, "OverlayTextureView surface available: ${width}x${height}")
         }
 
-        override fun onSurfaceChanged(gl: GL10?, width: Int, height: Int) {
-            GLES30.glViewport(0, 0, width, height)
-            viewWidth = width
-            viewHeight = height
-
-            DebugConfig.log(TAG, "Surface size changed: ${width}x${height}")
+        override fun onSurfaceTextureSizeChanged(surface: SurfaceTexture, width: Int, height: Int) {
+            renderThread?.onSurfaceChanged(width, height)
         }
 
-        override fun onDrawFrame(gl: GL10?) {
-            GLES30.glClear(GLES30.GL_COLOR_BUFFER_BIT)
+        override fun onSurfaceTextureDestroyed(surface: SurfaceTexture): Boolean {
+            renderThread?.shutdown()
+            renderThread = null
+            DebugConfig.log(TAG, "OverlayTextureView surface destroyed")
+            return true
+        }
 
-            val currentOverlay = overlay ?: return
+        override fun onSurfaceTextureUpdated(surface: SurfaceTexture) {}
 
-            try {
-                val programId = OverlayRegistry.getOrCompile(currentOverlay.name, localProgramCache)
-                if (programId == 0) return
+        private inner class RenderThread(
+            private val surfaceTexture: SurfaceTexture,
+            @Volatile private var viewWidth: Int,
+            @Volatile private var viewHeight: Int
+        ) : Thread("OverlayRenderThread") {
 
-                GLES30.glUseProgram(programId)
+            @Volatile var isRunning = true
+            @Volatile private var renderRequested = false
+            @Volatile private var overlay: Overlay? = null
 
-                val context = OverlayContext(
-                    outputTextureId = 0,
-                    viewWidth = (viewWidth / density).toInt(),
-                    viewHeight = (viewHeight / density).toInt(),
-                    deltaTime = 0.0,
-                    parameters = overlayParameters
+            private var egl: EGL10? = null
+            private var eglDisplay: EGLDisplay? = null
+            private var eglContext: EGLContext? = null
+            private var eglSurface: EGLSurface? = null
+            private var quadBuffer: FloatBuffer? = null
+            private val localProgramCache = mutableMapOf<String, Int>()
+            private val density: Float = context.resources.displayMetrics.density
+
+            fun setOverlay(o: Overlay?) {
+                overlay = o
+            }
+
+            fun requestRender() {
+                renderRequested = true
+            }
+
+            fun onSurfaceChanged(w: Int, h: Int) {
+                viewWidth = w
+                viewHeight = h
+            }
+
+            fun shutdown() {
+                isRunning = false
+                interrupt()
+                try {
+                    join(2000)
+                } catch (_: InterruptedException) {}
+            }
+
+            override fun run() {
+                try {
+                    initEGL()
+                    initGL()
+
+                    while (isRunning) {
+                        try {
+                            if (renderRequested) {
+                                renderRequested = false
+                                renderFrame()
+                            }
+                            sleep(8)
+                        } catch (_: InterruptedException) {
+                            break
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Overlay render thread error: ${e.message}")
+                    e.printStackTrace()
+                } finally {
+                    cleanup()
+                }
+            }
+
+            private fun initEGL() {
+                egl = javax.microedition.khronos.egl.EGLContext.getEGL() as EGL10
+                eglDisplay = egl!!.eglGetDisplay(EGL10.EGL_DEFAULT_DISPLAY)
+
+                val version = IntArray(2)
+                egl!!.eglInitialize(eglDisplay, version)
+
+                val configAttribs = intArrayOf(
+                    EGL10.EGL_RENDERABLE_TYPE, 4,
+                    EGL10.EGL_RED_SIZE, 8,
+                    EGL10.EGL_GREEN_SIZE, 8,
+                    EGL10.EGL_BLUE_SIZE, 8,
+                    EGL10.EGL_ALPHA_SIZE, 8,
+                    EGL10.EGL_DEPTH_SIZE, 0,
+                    EGL10.EGL_STENCIL_SIZE, 0,
+                    EGL10.EGL_NONE
                 )
 
-                currentOverlay.encode(programId, context)
+                val configs = arrayOfNulls<EGLConfig>(1)
+                val numConfigs = IntArray(1)
+                egl!!.eglChooseConfig(eglDisplay, configAttribs, configs, 1, numConfigs)
 
-                val buffer = quadBuffer ?: return
-                buffer.position(0)
+                val contextAttribs = intArrayOf(0x3098, 3, EGL10.EGL_NONE) // GLES 3
 
-                val stride = 4 * 4
+                eglContext = egl!!.eglCreateContext(
+                    eglDisplay, configs[0], EGL10.EGL_NO_CONTEXT, contextAttribs
+                )
+                eglSurface = egl!!.eglCreateWindowSurface(
+                    eglDisplay, configs[0], surfaceTexture, null
+                )
+                egl!!.eglMakeCurrent(eglDisplay, eglSurface, eglSurface, eglContext)
 
-                GLES30.glEnableVertexAttribArray(0)
-                GLES30.glVertexAttribPointer(0, 2, GLES30.GL_FLOAT, false, stride, buffer)
+                DebugConfig.log(TAG, "EGL initialized for overlay")
+            }
 
-                buffer.position(2)
-                GLES30.glEnableVertexAttribArray(1)
-                GLES30.glVertexAttribPointer(1, 2, GLES30.GL_FLOAT, false, stride, buffer)
+            private fun initGL() {
+                quadBuffer = GLUtils.createOverlayQuadBuffer()
 
-                GLES30.glDrawArrays(GLES30.GL_TRIANGLES, 0, 6)
+                GLES30.glEnable(GLES30.GL_BLEND)
+                // RGB: standard straight-alpha blend → framebuffer stores col*alpha
+                // Alpha: write srcAlpha as-is (not srcAlpha²) so SurfaceFlinger composites correctly
+                GLES30.glBlendFuncSeparate(
+                    GLES30.GL_SRC_ALPHA, GLES30.GL_ONE_MINUS_SRC_ALPHA,
+                    GLES30.GL_ONE,       GLES30.GL_ZERO
+                )
 
-                GLES30.glDisableVertexAttribArray(0)
-                GLES30.glDisableVertexAttribArray(1)
+                DebugConfig.log(TAG, "OpenGL initialized for overlay")
+            }
 
-                DebugConfig.log(TAG, "Rendering overlay: ${currentOverlay.name}")
+            private fun renderFrame() {
+                val currentOverlay = overlay ?: run {
+                    GLES30.glClearColor(0f, 0f, 0f, 0f)
+                    GLES30.glClear(GLES30.GL_COLOR_BUFFER_BIT)
+                    egl?.eglSwapBuffers(eglDisplay, eglSurface)
+                    return
+                }
 
-            } catch (e: Exception) {
-                Log.e(TAG, "Error rendering overlay: ${e.message}")
-                e.printStackTrace()
+                try {
+                    val programId = OverlayRegistry.getOrCompile(currentOverlay.name, localProgramCache)
+                    if (programId == 0) return
+
+                    GLES30.glViewport(0, 0, viewWidth, viewHeight)
+                    GLES30.glClearColor(0f, 0f, 0f, 0f)
+                    GLES30.glClear(GLES30.GL_COLOR_BUFFER_BIT)
+                    GLES30.glUseProgram(programId)
+
+                    val overlayCtx = OverlayContext(
+                        outputTextureId = 0,
+                        viewWidth = (viewWidth / density).toInt(),
+                        viewHeight = (viewHeight / density).toInt(),
+                        deltaTime = 0.0,
+                        parameters = overlayParameters
+                    )
+
+                    currentOverlay.encode(programId, overlayCtx)
+
+                    val buffer = quadBuffer ?: return
+                    buffer.position(0)
+                    val stride = 4 * 4
+
+                    GLES30.glEnableVertexAttribArray(0)
+                    GLES30.glVertexAttribPointer(0, 2, GLES30.GL_FLOAT, false, stride, buffer)
+
+                    buffer.position(2)
+                    GLES30.glEnableVertexAttribArray(1)
+                    GLES30.glVertexAttribPointer(1, 2, GLES30.GL_FLOAT, false, stride, buffer)
+
+                    GLES30.glDrawArrays(GLES30.GL_TRIANGLES, 0, 6)
+
+                    GLES30.glDisableVertexAttribArray(0)
+                    GLES30.glDisableVertexAttribArray(1)
+
+                    egl?.eglSwapBuffers(eglDisplay, eglSurface)
+
+                    DebugConfig.log(TAG, "Rendered overlay: ${currentOverlay.name}")
+
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error rendering overlay: ${e.message}")
+                    e.printStackTrace()
+                }
+            }
+
+            private fun cleanup() {
+                localProgramCache.clear()
+                egl?.run {
+                    eglMakeCurrent(eglDisplay, EGL10.EGL_NO_SURFACE, EGL10.EGL_NO_SURFACE, EGL10.EGL_NO_CONTEXT)
+                    eglDestroySurface(eglDisplay, eglSurface)
+                    eglDestroyContext(eglDisplay, eglContext)
+                    eglTerminate(eglDisplay)
+                }
+                DebugConfig.log(TAG, "Overlay render thread cleaned up")
             }
         }
     }
