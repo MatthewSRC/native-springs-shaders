@@ -73,6 +73,10 @@ class NativeSpringsShaderOverlayView: ExpoView {
 
         overlayParameters[name] = convertedValue
 
+        if name == "renderScale" {
+            applyRenderScale()
+        }
+
         metalView.setNeedsDisplay()
     }
 
@@ -90,6 +94,7 @@ class NativeSpringsShaderOverlayView: ExpoView {
 
     deinit {
         stopAnimation()
+        currentOverlay?.releaseView(viewId: ObjectIdentifier(self).hashValue)
     }
 
 
@@ -138,6 +143,8 @@ class NativeSpringsShaderOverlayView: ExpoView {
                     overlayParameters[param.name] = defaultValue
                 }
             }
+
+            applyRenderScale()
 
             if overlay.needsAnimation {
                 startAnimation()
@@ -209,6 +216,22 @@ class NativeSpringsShaderOverlayView: ExpoView {
         metalView.setNeedsDisplay()
     }
 
+    /// Renders below native resolution when the overlay or `renderScale` parameter asks for it;
+    /// the layer scales the drawable up to the view bounds.
+    private func applyRenderScale() {
+        let requested = (overlayParameters["renderScale"] as? Float).map { CGFloat($0) } ?? currentOverlay?.renderScale ?? 1.0
+        let screenScale = window?.screen.scale ?? UIScreen.main.scale
+        let scale = screenScale * min(max(requested, 0.1), 1.0)
+        if metalView.contentScaleFactor != scale {
+            metalView.contentScaleFactor = scale
+        }
+    }
+
+    override func didMoveToWindow() {
+        super.didMoveToWindow()
+        applyRenderScale()
+    }
+
     override func didAddSubview(_ subview: UIView) {
         super.didAddSubview(subview)
         if subview != metalView {
@@ -255,7 +278,8 @@ class NativeSpringsShaderOverlayView: ExpoView {
             outputTexture: drawable.texture,
             viewSize: bounds.size,
             deltaTime: displayLink?.duration ?? 0,
-            parameters: overlayParameters
+            parameters: overlayParameters,
+            viewId: ObjectIdentifier(self).hashValue
         )
 
         overlay.encode(encoder: renderEncoder, context: context)

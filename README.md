@@ -7,7 +7,7 @@ https://github.com/user-attachments/assets/584ff7a4-4c98-472f-9ec0-1120a8b534e6
 ## Features
 
 - **Native Performance**: Metal (iOS) and OpenGL (Android) implementations
-- **10 Visual Effects**: 3 content shaders + 7 overlay effects, more to come in the near future
+- **13 Visual Effects**: 3 content shaders + 10 overlay effects, more to come in the near future
 - **TypeScript Support**: Full type definitions included
 - **Expo Compatible**: Works with managed and bare Expo projects
 
@@ -26,11 +26,14 @@ https://github.com/user-attachments/assets/584ff7a4-4c98-472f-9ec0-1120a8b534e6
 | Effect | Description |
 |--------|-------------|
 | **[AuroraOverlay](./docs/overlays/aurora.md)** | Northern lights effect |
+| **[BlobOverlay](./docs/overlays/blob.md)** | Glowing folding blob with conversational states |
+| **[CloudsOverlay](./docs/overlays/clouds.md)** | Soft drifting gradient clouds |
 | **[FireSparksOverlay](./docs/overlays/fire-sparks.md)** | Fire particles |
 | **[FireworksOverlay](./docs/overlays/fireworks.md)** | Firework explosions |
 | **[LightRayOverlay](./docs/overlays/light-ray.md)** |  Volumetric light rays |
 | **[LiquidMetalOverlay](./docs/overlays/liquid-metal.md)** | Chrome metallic border |
 | **[NeonOverlay](./docs/overlays/neon.md)** | Glowing neon border |
+| **[OrbOverlay](./docs/overlays/orb.md)** | Pulsing energy orb with conversational states |
 | **[SparklesOverlay](./docs/overlays/sparkles.md)** |  Twinkling particles |
 
 ## Installation

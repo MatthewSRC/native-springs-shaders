@@ -13,7 +13,12 @@ import { SparklesOverlayScreen } from './src/screens/SparklesOverlayScreen';
 import { LiquidMetalOverlayScreen } from './src/screens/LiquidMetalOverlayScreen';
 import { NeonOverlayScreen } from './src/screens/NeonOverlayScreen';
 import { CloudsOverlayScreen } from './src/screens/CloudsOverlayScreen';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { OrbOverlayScreen } from './src/screens/OrbOverlayScreen';
+import { BlobOverlayScreen } from './src/screens/BlobOverlayScreen';
+import { OrbDemoScreen } from './src/screens/OrbDemoScreen';
+import { BlobDemoScreen } from './src/screens/BlobDemoScreen';
+import { CloudsDemoScreen } from './src/screens/CloudsDemoScreen';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
 type Screen =
   | 'home'
@@ -27,7 +32,15 @@ type Screen =
   | 'sparkles'
   | 'liquidMetal'
   | 'neon'
-  | 'clouds';
+  | 'clouds'
+  | 'cloudsDemo'
+  | 'orb'
+  | 'orbDemo'
+  | 'blob'
+  | 'blobDemo';
+
+// These screens handle safe areas themselves and draw edge to edge
+const EDGE_TO_EDGE: Screen[] = ['clouds', 'cloudsDemo', 'orb', 'orbDemo', 'blob', 'blobDemo'];
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('home');
@@ -57,17 +70,46 @@ export default function App() {
       case 'neon':
         return <NeonOverlayScreen onBack={() => setCurrentScreen('home')} />;
       case 'clouds':
-        return <CloudsOverlayScreen onBack={() => setCurrentScreen('home')} />;
+        return (
+          <CloudsOverlayScreen
+            onBack={() => setCurrentScreen('home')}
+            onOpenDemo={() => setCurrentScreen('cloudsDemo')}
+          />
+        );
+      case 'cloudsDemo':
+        return <CloudsDemoScreen onBack={() => setCurrentScreen('clouds')} />;
+      case 'orb':
+        return (
+          <OrbOverlayScreen
+            onBack={() => setCurrentScreen('home')}
+            onOpenDemo={() => setCurrentScreen('orbDemo')}
+          />
+        );
+      case 'orbDemo':
+        return <OrbDemoScreen onBack={() => setCurrentScreen('orb')} />;
+      case 'blob':
+        return (
+          <BlobOverlayScreen
+            onBack={() => setCurrentScreen('home')}
+            onOpenDemo={() => setCurrentScreen('blobDemo')}
+          />
+        );
+      case 'blobDemo':
+        return <BlobDemoScreen onBack={() => setCurrentScreen('blob')} />;
       default:
         return <HomeScreen onNavigate={setCurrentScreen} />;
     }
   };
 
+  const Root = EDGE_TO_EDGE.includes(currentScreen) ? View : SafeAreaView;
+
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" />
-      {renderScreen()}
-    </SafeAreaView>
+    <SafeAreaProvider>
+      <Root style={styles.container}>
+        <StatusBar barStyle="light-content" />
+        {renderScreen()}
+      </Root>
+    </SafeAreaProvider>
   );
 }
 

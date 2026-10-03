@@ -346,6 +346,42 @@ export interface CloudsParameters {
   blobCount?: number;
 }
 
+export interface ConversationalParameters {
+  /** Controls the overall intensity/opacity (0.0 - 1.0+) */
+  intensity?: number;
+  /**
+   * Primary glow color, cross-fades when changed - accepts multiple formats:
+   * - Normalized RGB: [1.0, 0.8, 0.4]
+   * - RGB 0-255: [255, 204, 102]
+   * - Hex string: '#FFCC66'
+   */
+  color?: ColorValue;
+  /**
+   * Secondary glow color, cross-fades when changed - accepts multiple formats:
+   * - Normalized RGB: [0.75, 0.8, 0.4]
+   * - RGB 0-255: [191, 204, 102]
+   * - Hex string: '#BFCC66'
+   */
+  secondaryColor?: ColorValue;
+  /** Size multiplier (0.5 - 2.0) */
+  scale?: number;
+  /** Global animation speed multiplier, on top of state pacing (0.0 - 3.0) */
+  speed?: number;
+  /** Approximate time in seconds for state and mode transitions to settle (0.1 - 3.0) */
+  transitionDuration?: number;
+  /** Approximate time in seconds for color changes to cross-fade (0.1 - 3.0) */
+  colorTransitionDuration?: number;
+  /**
+   * Render resolution as a fraction of the screen's pixel density (0.1 - 1.0).
+   * Lower is faster and the glow stays soft. Defaults to 0.75 for Orb and 0.5 for Blob.
+   */
+  renderScale?: number;
+}
+
+export type OrbParameters = ConversationalParameters;
+
+export type BlobParameters = ConversationalParameters;
+
 export type ShaderViewProps = ViewProps & {
   shaderName?: string;
   parameters?: Record<string, any>;

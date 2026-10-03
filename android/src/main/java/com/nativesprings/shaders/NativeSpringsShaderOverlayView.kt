@@ -51,6 +51,9 @@ class NativeSpringsShaderOverlayView(context: Context, appContext: AppContext) :
         }
 
         overlayParameters[name] = convertedValue
+        if (name == "renderScale") {
+            overlayTextureView.applyRenderScale()
+        }
         overlayTextureView.requestRender()
     }
 
@@ -102,6 +105,7 @@ class NativeSpringsShaderOverlayView(context: Context, appContext: AppContext) :
             }
 
             overlayTextureView.setOverlay(currentOverlay)
+            overlayTextureView.applyRenderScale()
 
             if (currentOverlay?.needsAnimation == true) {
                 startAnimation()
@@ -176,6 +180,16 @@ class NativeSpringsShaderOverlayView(context: Context, appContext: AppContext) :
         overlayTextureView.layout(0, 0, width, height)
     }
 
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        // Screens that were detached (tab switches, navigation) come back with a new
+        // surface, so the animation loop has to be resumed to draw into it
+        if (currentOverlay?.needsAnimation == true) {
+            startAnimation()
+        }
+        overlayTextureView.requestRender()
+    }
+
     override fun onDetachedFromWindow() {
         super.onDetachedFromWindow()
         stopAnimation()
@@ -208,6 +222,26 @@ class NativeSpringsShaderOverlayView(context: Context, appContext: AppContext) :
             renderThread?.setOverlay(overlay)
         }
 
+        /** Resolution fraction requested by the `renderScale` parameter or the overlay */
+        private fun renderScale(): Float =
+            ((overlayParameters["renderScale"] as? Number)?.toFloat() ?: currentOverlay?.renderScale ?: 1f)
+                .coerceIn(0.1f, 1f)
+
+        private fun scaled(size: Int, scale: Float): Int = maxOf(1, (size * scale).toInt())
+
+        /**
+         * Renders below native resolution by shrinking the surface buffer;
+         * the TextureView scales it up to the view bounds.
+         */
+        fun applyRenderScale() {
+            val surface = surfaceTexture ?: return
+            val thread = renderThread ?: return
+            if (width == 0 || height == 0) return
+            val scale = renderScale()
+            surface.setDefaultBufferSize(scaled(width, scale), scaled(height, scale))
+            thread.onSurfaceChanged(scaled(width, scale), scaled(height, scale), scale)
+        }
+
         fun requestRender() {
             val thread = renderThread
             if (thread != null) {
@@ -218,7 +252,9 @@ class NativeSpringsShaderOverlayView(context: Context, appContext: AppContext) :
         }
 
         override fun onSurfaceTextureAvailable(surface: SurfaceTexture, width: Int, height: Int) {
-            val thread = RenderThread(surface, width, height)
+            val scale = renderScale()
+            surface.setDefaultBufferSize(scaled(width, scale), scaled(height, scale))
+            val thread = RenderThread(surface, scaled(width, scale), scaled(height, scale), scale)
             renderThread = thread
             currentOverlay?.let { thread.setOverlay(it) }
             thread.start()
@@ -230,7 +266,9 @@ class NativeSpringsShaderOverlayView(context: Context, appContext: AppContext) :
         }
 
         override fun onSurfaceTextureSizeChanged(surface: SurfaceTexture, width: Int, height: Int) {
-            renderThread?.onSurfaceChanged(width, height)
+            val scale = renderScale()
+            surface.setDefaultBufferSize(scaled(width, scale), scaled(height, scale))
+            renderThread?.onSurfaceChanged(scaled(width, scale), scaled(height, scale), scale)
         }
 
         override fun onSurfaceTextureDestroyed(surface: SurfaceTexture): Boolean {
@@ -245,7 +283,8 @@ class NativeSpringsShaderOverlayView(context: Context, appContext: AppContext) :
         private inner class RenderThread(
             private val surfaceTexture: SurfaceTexture,
             @Volatile private var viewWidth: Int,
-            @Volatile private var viewHeight: Int
+            @Volatile private var viewHeight: Int,
+            @Volatile private var bufferScale: Float
         ) : Thread("OverlayRenderThread") {
 
             @Volatile var isRunning = true
@@ -268,9 +307,10 @@ class NativeSpringsShaderOverlayView(context: Context, appContext: AppContext) :
                 renderRequested = true
             }
 
-            fun onSurfaceChanged(w: Int, h: Int) {
+            fun onSurfaceChanged(w: Int, h: Int, scale: Float) {
                 viewWidth = w
                 viewHeight = h
+                bufferScale = scale
             }
 
             fun shutdown() {
@@ -373,10 +413,11 @@ class NativeSpringsShaderOverlayView(context: Context, appContext: AppContext) :
 
                     val overlayCtx = OverlayContext(
                         outputTextureId = 0,
-                        viewWidth = (viewWidth / density).toInt(),
-                        viewHeight = (viewHeight / density).toInt(),
+                        viewWidth = (viewWidth / (density * bufferScale)).toInt(),
+                        viewHeight = (viewHeight / (density * bufferScale)).toInt(),
                         deltaTime = 0.0,
-                        parameters = overlayParameters
+                        parameters = overlayParameters,
+                        viewId = System.identityHashCode(this@NativeSpringsShaderOverlayView)
                     )
 
                     currentOverlay.encode(programId, overlayCtx)

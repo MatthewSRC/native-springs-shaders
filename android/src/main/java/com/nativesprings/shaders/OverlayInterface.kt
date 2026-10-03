@@ -8,7 +8,9 @@ data class OverlayContext(
     val viewWidth: Int,
     val viewHeight: Int,
     val deltaTime: Double,
-    val parameters: Map<String, Any>
+    val parameters: Map<String, Any>,
+    /** Identifies the view being rendered, for overlays that keep per-view state */
+    val viewId: Int = 0
 )
 
 /**
@@ -31,6 +33,13 @@ interface Overlay {
     val needsAnimation: Boolean
 
     /**
+     * Render resolution as a fraction of the screen's pixel density.
+     * Views can override it with a `renderScale` parameter.
+     */
+    val renderScale: Float
+        get() = 1f
+
+    /**
      * Compiles the overlay and returns a program ID
      * @return OpenGL program ID
      * @throws Exception if compilation fails
@@ -50,4 +59,10 @@ interface Overlay {
      * @param context Rendering context with texture and parameters
      */
     fun encode(programId: Int, context: OverlayContext)
+
+    /**
+     * Called when a view using this overlay releases its surface, so per-view state can be dropped
+     * @param viewId The id passed as OverlayContext.viewId
+     */
+    fun releaseView(viewId: Int) {}
 }
